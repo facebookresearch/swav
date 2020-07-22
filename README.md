@@ -14,8 +14,15 @@ Our method can be trained with large and small batches and can scale to unlimite
 
 # Model Zoo
 
-We provide baseline SwAV pre-trained models with ResNet-50 architecture in torchvision format.
-Besides SwAV, we also provide models pre-trained with [DeepCluster-v2](./main_deepclusterv2.py) and SeLa-v2 obtained by applying improvements from the self-supervised community to [DeepCluster](https://arxiv.org/abs/1807.05520) and [SeLa](https://arxiv.org/abs/1911.05371) (see details in the [appendix of our paper](https://arxiv.org/abs/2006.09882)).
+We release our best ResNet-50 pre-trained with SwAV with the hope that other researchers might also benefit by replacing the ImageNet supervised network with SwAV backbone.
+To load the model, simply do:
+```python
+import torch
+model = torch.hub.load('facebookresearch/swav', 'resnet50')
+```
+
+We provide several baseline SwAV pre-trained models with ResNet-50 architecture in torchvision format.
+We also provide models pre-trained with [DeepCluster-v2](./main_deepclusterv2.py) and SeLa-v2 obtained by applying improvements from the self-supervised community to [DeepCluster](https://arxiv.org/abs/1807.05520) and [SeLa](https://arxiv.org/abs/1911.05371) (see details in the [appendix of our paper](https://arxiv.org/abs/2006.09882)).
 
 | method | epochs | batch-size | multi-crop | ImageNet top-1 acc. | url | args |
 |-------------------|-------------------|---------------------|--------------------|--------------------|--------------------|--------------------|
