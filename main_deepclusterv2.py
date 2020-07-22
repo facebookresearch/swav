@@ -97,6 +97,8 @@ parser.add_argument("--local_rank", default=0, type=int,
 #### other parameters ###
 #########################
 parser.add_argument("--arch", default="resnet50", type=str, help="convnet architecture")
+parser.add_argument("--hidden_mlp", default=2048, type=int,
+                    help="hidden layer dimension in projection head")
 parser.add_argument("--workers", default=10, type=int,
                     help="number of data loading workers")
 parser.add_argument("--checkpoint_freq", type=int, default=25,
@@ -137,7 +139,7 @@ def main():
     # build model
     model = resnet_models.__dict__[args.arch](
         normalize=True,
-        hidden_mlp=2048 if args.arch == "resnet50" else 2048 * int(args.arch[-1]),
+        hidden_mlp=args.hidden_mlp,
         output_dim=args.feat_dim,
         nmb_prototypes=args.nmb_prototypes,
     )

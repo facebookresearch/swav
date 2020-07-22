@@ -31,6 +31,14 @@ Besides SwAV, we also provide models pre-trained with [DeepCluster-v2](./main_de
 | SeLa-v2 | 400 | 4096 | 2x160 + 4x96 | 71.8 | [model](https://dl.fbaipublicfiles.com/deepcluster/selav2_400ep_pretrain.pth.tar) | - |
 | SeLa-v2 | 400 | 4096 | 2x224 | 67.2 | [model](https://dl.fbaipublicfiles.com/deepcluster/selav2_400ep_2x224_pretrain.pth.tar) | - |
 
+## Larger architectures
+We provide SwAV models with ResNet-50 networks where we multiply the width by a factor ×2, ×4, and ×5.
+| network | parameters | epochs | ImageNet top-1 acc. | url | args |
+|-------------------|---------------------|--------------------|--------------------|--------------------|--------------------|
+| RN50-w2 | 94M | 400 | 77.3 | [model](https://dl.fbaipublicfiles.com/deepcluster/swav_RN50w2_400ep_pretrain.pth.tar) | [script](./scripts/swav_RN50w2_400ep_pretrain.sh) |
+| RN50-w4 | 375M | 400 | 77.9 | [model](https://dl.fbaipublicfiles.com/deepcluster/swav_RN50w4_400ep_pretrain.pth.tar) | [script](./scripts/swav_RN50w4_400ep_pretrain.sh) |
+| RN50-w5 | 586M | 400 | 78.5 | [model](https://dl.fbaipublicfiles.com/deepcluster/swav_RN50w5_400ep_pretrain.pth.tar) | [script](./scripts/swav_RN50w5_400ep_pretrain.sh) |
+
 ## Running times
 We provide the running times for some of our runs:
 | method | batch-size | multi-crop | scripts | time per epoch |
