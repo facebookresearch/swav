@@ -56,6 +56,15 @@ We provide the running times for some of our runs:
 
 # Running SwAV unsupervised training
 
+## Requirements
+- Python 3.6
+- [PyTorch](http://pytorch.org) install >= 1.4.0
+- torchvision
+- CUDA 10.1
+- [Apex](https://github.com/NVIDIA/apex) with CUDA extension
+- Other dependencies: opencv-python, scipy, pandas, numpy
+
+## Singlenode training
 SwAV is very simple to implement and experiment with.
 Our implementation consists in a [main_swav.py](./main_swav.py) file from which are imported the dataset definition [src/multicropdataset.py](./src/multicropdataset.py), the model architecture [src/resnet50.py](./src/resnet50.py) and some miscellaneous training utilities [src/utils.py](./src/utils.py).
 
@@ -97,13 +106,17 @@ python -m torch.distributed.launch --nproc_per_node=8 eval_linear.py \
 --pretrained /path/to/checkpoints/swav_800ep_pretrain.pth.tar
 ```
 
-## Requirements
-- Python 3.6
-- [PyTorch](http://pytorch.org) install >= 1.4.0
-- torchvision
-- CUDA 10.1
-- [Apex](https://github.com/NVIDIA/apex) with CUDA extension
-- Other dependencies: opencv-python, scipy, pandas, numpy
+## Evaluate models: Transferring to Detection with DETR
+[DETR](https://arxiv.org/abs/2005.12872) is a recent object detection framework that reaches competitive performance with Faster R-CNN while being conceptually simpler and trainable end-to-end. We evaluate our SwAV ResNet-50 backbone on object detection on COCO dataset using DETR framework with full fine-tuning. Here are the instructions for reproducing our experiments:
+
+1. [Install detr](https://github.com/facebookresearch/detr#usage---object-detection) and prepare COCO dataset following [these instructions](https://github.com/facebookresearch/detr#data-preparation).
+
+1. Apply the changes highlighted in [this gist](https://gist.github.com/mathildecaron31/bcd03b8864f7ca1aeb89dfe76a118b14#file-backbone-py-L92-L101) to [detr backbone file](https://github.com/facebookresearch/detr/blob/master/models/backbone.py) in order to load SwAV backbone instead of ImageNet supervised weights.
+
+1. Launch training from `detr` repository with [run_with_submitit.py](https://github.com/facebookresearch/detr/blob/master/run_with_submitit.py).
+```
+python run_with_submitit.py --batch_size 4 --nodes 2 --lr_backbone 5e-5
+```
 
 ## License
 See the [LICENSE](LICENSE) file for more details.
