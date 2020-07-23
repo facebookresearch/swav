@@ -99,10 +99,11 @@ python -m torch.distributed.launch --nproc_per_node=8 eval_linear.py \
 
 ## Requirements
 - Python 3.6
-- [PyTorch](http://pytorch.org) install > 1.4.0
+- [PyTorch](http://pytorch.org) install >= 1.4.0
 - torchvision
 - CUDA 10.1
 - [Apex](https://github.com/NVIDIA/apex) with CUDA extension
+- Other dependencies: opencv-python, scipy, pandas, numpy
 
 ## License
 See the [LICENSE](LICENSE) file for more details.
