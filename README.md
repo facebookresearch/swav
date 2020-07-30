@@ -105,6 +105,7 @@ python -m torch.distributed.launch --nproc_per_node=8 eval_linear.py \
 --dist_url /your/distributed/init/method \
 --pretrained /path/to/checkpoints/swav_800ep_pretrain.pth.tar
 ```
+The resulting linear classifier can be downloaded [here](https://dl.fbaipublicfiles.com/deepcluster/swav_800ep_eval_linear.pth.tar).
 
 ## Evaluate models: Transferring to Detection with DETR
 [DETR](https://arxiv.org/abs/2005.12872) is a recent object detection framework that reaches competitive performance with Faster R-CNN while being conceptually simpler and trainable end-to-end. We evaluate our SwAV ResNet-50 backbone on object detection on COCO dataset using DETR framework with full fine-tuning. Here are the instructions for reproducing our experiments:
