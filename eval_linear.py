@@ -79,7 +79,7 @@ parser.add_argument("--final_lr", type=float, default=0, help="final learning ra
 #########################
 #### dist parameters ###
 #########################
-parser.add_argument("--dist_url", default="file:///private/home/mathilde/file", type=str,
+parser.add_argument("--dist_url", default="env://", type=str,
                     help="url used to set up distributed training")
 parser.add_argument("--world_size", default=-1, type=int, help="""
                     number of processes: it is set automatically and

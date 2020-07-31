@@ -89,7 +89,7 @@ parser.add_argument("--start_warmup", default=0, type=float,
 #########################
 #### dist parameters ###
 #########################
-parser.add_argument("--dist_url", default="", type=str, help="""url used to set up distributed
+parser.add_argument("--dist_url", default="env://", type=str, help="""url used to set up distributed
                     training; see https://pytorch.org/docs/stable/distributed.html""")
 parser.add_argument("--world_size", default=-1, type=int, help="""
                     number of processes: it is set automatically and

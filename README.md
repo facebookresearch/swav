@@ -72,7 +72,6 @@ For example, to train SwAV baseline on a single node with 8 gpus for 400 epochs,
 ```
 python -m torch.distributed.launch --nproc_per_node=8 main_swav.py \
 --data_path /path/to/imagenet \
---dist_url /your/distributed/init/method \
 --epochs 400 \
 --base_lr 0.6 \
 --final_lr 0.0006 \
@@ -87,7 +86,6 @@ python -m torch.distributed.launch --nproc_per_node=8 main_swav.py \
 --queue_length 3840 \
 --epoch_queue_starts 15
 ```
-We refer the user to pytorch distributed documentation ([env](https://pytorch.org/docs/stable/distributed.html#environment-variable-initialization) or [file](https://pytorch.org/docs/stable/distributed.html#shared-file-system-initialization) or [tcp](https://pytorch.org/docs/stable/distributed.html#tcp-initialization)) for setting the distributed initialization method (parameter `dist_url`) correctly.
 
 ## Multinode training
 Distributed training is available via Slurm. We provide several [SBATCH scripts](./scripts) to reproduce our SwAV models.
@@ -97,12 +95,13 @@ sbatch ./scripts/swav_800ep_pretrain.sh
 ```
 Note that you might need to remove the copyright header from the sbatch file to launch it.
 
+**Set up `dist_url` parameter**: We refer the user to pytorch distributed documentation ([env](https://pytorch.org/docs/stable/distributed.html#environment-variable-initialization) or [file](https://pytorch.org/docs/stable/distributed.html#shared-file-system-initialization) or [tcp](https://pytorch.org/docs/stable/distributed.html#tcp-initialization)) for setting the distributed initialization method (parameter `dist_url`) correctly. In the provided sbatch files, we use the [tcp init method](https://pytorch.org/docs/stable/distributed.html#tcp-initialization) (see [\*](https://github.com/facebookresearch/swav/blob/master/scripts/swav_800ep_pretrain.sh#L17-L20) for example).
+
 ## Evaluate models: Linear classification on ImageNet
 To train a supervised linear classifier on frozen features/weights on a single node with 8 gpus, run:
 ```
 python -m torch.distributed.launch --nproc_per_node=8 eval_linear.py \
 --data_path /path/to/imagenet \
---dist_url /your/distributed/init/method \
 --pretrained /path/to/checkpoints/swav_800ep_pretrain.pth.tar
 ```
 The resulting linear classifier can be downloaded [here](https://dl.fbaipublicfiles.com/deepcluster/swav_800ep_eval_linear.pth.tar).
