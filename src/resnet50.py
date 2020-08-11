@@ -168,7 +168,7 @@ class ResNet(nn.Module):
                 "or a 3-element tuple, got {}".format(replace_stride_with_dilation)
             )
         self.groups = groups
-        self.base_width = width_per_group * widen
+        self.base_width = width_per_group
 
         # change padding 3 -> 2 compared to original torchvision code because added a padding layer
         num_out_filters = width_per_group * widen
