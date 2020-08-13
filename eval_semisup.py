@@ -9,6 +9,7 @@ import argparse
 import os
 import time
 from logging import getLogger
+import urllib
 
 import torch
 import torch.nn as nn
@@ -34,16 +35,18 @@ import src.resnet50 as resnet_models
 logger = getLogger()
 
 
-parser = argparse.ArgumentParser(description="Evaluate models: Linear classification on ImageNet")
+parser = argparse.ArgumentParser(description="Evaluate models: Fine-tuning with 1% or 10% labels on ImageNet")
 
 #########################
 #### main parameters ####
 #########################
+parser.add_argument("--labels_perc", type=str, default="10", choices=["1", "10"],
+                    help="fine-tune on either 1% or 10% of labels")
 parser.add_argument("--dump_path", type=str, default=".",
                     help="experiment dump path for checkpoints and log")
 parser.add_argument("--seed", type=int, default=31, help="seed")
 parser.add_argument("--data_path", type=str, default="/path/to/imagenet",
-                    help="path to dataset repository")
+                    help="path to imagenet")
 parser.add_argument("--workers", default=10, type=int,
                     help="number of data loading workers")
 
@@ -52,28 +55,19 @@ parser.add_argument("--workers", default=10, type=int,
 #########################
 parser.add_argument("--arch", default="resnet50", type=str, help="convnet architecture")
 parser.add_argument("--pretrained", default="", type=str, help="path to pretrained weights")
-parser.add_argument("--global_pooling", default=True, type=bool_flag,
-                    help="if True, we use the resnet50 global average pooling")
-parser.add_argument("--use_bn", default=False, type=bool_flag,
-                    help="optionally add a batchnorm layer before the linear classifier")
 
 #########################
 #### optim parameters ###
 #########################
-parser.add_argument("--epochs", default=100, type=int,
+parser.add_argument("--epochs", default=20, type=int,
                     help="number of total epochs to run")
 parser.add_argument("--batch_size", default=32, type=int,
                     help="batch size per gpu, i.e. how many unique instances per gpu")
-parser.add_argument("--lr", default=0.3, type=float, help="initial learning rate")
-parser.add_argument("--wd", default=1e-6, type=float, help="weight decay")
-parser.add_argument("--nesterov", default=False, type=bool_flag, help="nesterov momentum")
-parser.add_argument("--scheduler_type", default="cosine", type=str, choices=["step", "cosine"])
-# for multi-step learning rate decay
-parser.add_argument("--decay_epochs", type=int, nargs="+", default=[60, 80],
+parser.add_argument("--lr", default=0.01, type=float, help="initial learning rate - trunk")
+parser.add_argument("--lr_last_layer", default=0.2, type=float, help="initial learning rate - head")
+parser.add_argument("--decay_epochs", type=int, nargs="+", default=[12, 16],
                     help="Epochs at which to decay learning rate.")
-parser.add_argument("--gamma", type=float, default=0.1, help="decay factor")
-# for cosine learning rate schedule
-parser.add_argument("--final_lr", type=float, default=0, help="final learning rate")
+parser.add_argument("--gamma", type=float, default=0.2, help="lr decay factor")
 
 #########################
 #### dist parameters ###
@@ -99,7 +93,15 @@ def main():
     )
 
     # build data
-    train_dataset = datasets.ImageFolder(os.path.join(args.data_path, "train"))
+    train_data_path = os.path.join(args.data_path, "train")
+    train_dataset = datasets.ImageFolder(train_data_path)
+    # take either 1% or 10% of images
+    subset_file = urllib.request.urlopen("https://raw.githubusercontent.com/google-research/simclr/master/imagenet_subsets/" + str(args.labels_perc) + "percent.txt")
+    list_imgs = [li.decode("utf-8").split('\n')[0] for li in subset_file]
+    train_dataset.samples = [(
+        os.path.join(train_data_path, li.split('_')[0], li),
+        train_dataset.class_to_idx[li.split('_')[0]]
+    ) for li in list_imgs]
     val_dataset = datasets.ImageFolder(os.path.join(args.data_path, "val"))
     tr_normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406], std=[0.228, 0.224, 0.225]
@@ -130,24 +132,13 @@ def main():
         num_workers=args.workers,
         pin_memory=True,
     )
-    logger.info("Building data done")
+    logger.info("Building data done with {} images loaded.".format(len(train_dataset)))
 
     # build model
-    model = resnet_models.__dict__[args.arch](output_dim=0, eval_mode=True)
-    linear_classifier = RegLog(1000, args.arch, args.global_pooling, args.use_bn)
+    model = resnet_models.__dict__[args.arch](output_dim=1000)
 
-    # convert batch norm layers (if any)
-    linear_classifier = nn.SyncBatchNorm.convert_sync_batchnorm(linear_classifier)
-
-    # model to gpu
-    model = model.cuda()
-    linear_classifier = linear_classifier.cuda()
-    linear_classifier = nn.parallel.DistributedDataParallel(
-        linear_classifier,
-        device_ids=[args.gpu_to_work_on],
-        find_unused_parameters=True,
-    )
-    model.eval()
+    # convert batch norm layers
+    model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
     # load weights
     if os.path.isfile(args.pretrained):
@@ -165,33 +156,42 @@ def main():
         msg = model.load_state_dict(state_dict, strict=False)
         logger.info("Load pretrained model with msg: {}".format(msg))
     else:
-        logger.info("No pretrained weights found => training with random weights")
+        logger.info("No pretrained weights found => training from random weights")
 
-    # set optimizer
-    optimizer = torch.optim.SGD(
-        linear_classifier.parameters(),
-        lr=args.lr,
-        nesterov=args.nesterov,
-        momentum=0.9,
-        weight_decay=args.wd,
+    # model to gpu
+    model = model.cuda()
+    model = nn.parallel.DistributedDataParallel(
+        model,
+        device_ids=[args.gpu_to_work_on],
+        find_unused_parameters=True,
     )
 
+    # set optimizer
+    trunk_parameters = []
+    head_parameters = []
+    for name, param in model.named_parameters():
+        if 'head' in name:
+            head_parameters.append(param)
+        else:
+            trunk_parameters.append(param)
+    optimizer = torch.optim.SGD(
+        [{'params': trunk_parameters},
+         {'params': head_parameters, 'lr': args.lr_last_layer}],
+        lr=args.lr,
+        momentum=0.9,
+        weight_decay=0,
+    )
     # set scheduler
-    if args.scheduler_type == "step":
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer, args.decay_epochs, gamma=args.gamma
-        )
-    elif args.scheduler_type == "cosine":
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, args.epochs, eta_min=args.final_lr
-        )
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, args.decay_epochs, gamma=args.gamma
+    )
 
     # Optionally resume from a checkpoint
-    to_restore = {"epoch": 0, "best_acc": 0.}
+    to_restore = {"epoch": 0, "best_acc": (0., 0.)}
     restart_from_checkpoint(
         os.path.join(args.dump_path, "checkpoint.pth.tar"),
         run_variables=to_restore,
-        state_dict=linear_classifier,
+        state_dict=model,
         optimizer=optimizer,
         scheduler=scheduler,
     )
@@ -207,8 +207,8 @@ def main():
         # set samplers
         train_loader.sampler.set_epoch(epoch)
 
-        scores = train(model, linear_classifier, optimizer, train_loader, epoch)
-        scores_val = validate_network(val_loader, model, linear_classifier)
+        scores = train(model, optimizer, train_loader, epoch)
+        scores_val = validate_network(val_loader, model)
         training_stats.update(scores + scores_val)
 
         scheduler.step()
@@ -217,56 +217,18 @@ def main():
         if args.rank == 0:
             save_dict = {
                 "epoch": epoch + 1,
-                "state_dict": linear_classifier.state_dict(),
+                "state_dict": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
                 "scheduler": scheduler.state_dict(),
                 "best_acc": best_acc,
             }
             torch.save(save_dict, os.path.join(args.dump_path, "checkpoint.pth.tar"))
-    logger.info("Training of the supervised linear classifier on frozen features completed.\n"
-                "Top-1 test accuracy: {acc:.1f}".format(acc=best_acc))
+    logger.info("Fine-tuning with {}% of labels completed.\n"
+                "Test accuracies: top-1 {acc1:.1f}, top-5 {acc5:.1f}".format(
+                args.labels_perc, acc1=best_acc[0], acc5=best_acc[1]))
 
 
-class RegLog(nn.Module):
-    """Creates logistic regression on top of frozen features"""
-
-    def __init__(self, num_labels, arch="resnet50", global_avg=False, use_bn=True):
-        super(RegLog, self).__init__()
-        self.bn = None
-        if global_avg:
-            if arch == "resnet50":
-                s = 2048
-            elif arch == "resnet50w2":
-                s = 4096
-            elif arch == "resnet50w4":
-                s = 8192
-            self.av_pool = nn.AdaptiveAvgPool2d((1, 1))
-        else:
-            assert arch == "resnet50"
-            s = 8192
-            self.av_pool = nn.AvgPool2d(6, stride=1)
-            if use_bn:
-                self.bn = nn.BatchNorm2d(2048)
-        self.linear = nn.Linear(s, num_labels)
-        self.linear.weight.data.normal_(mean=0.0, std=0.01)
-        self.linear.bias.data.zero_()
-
-    def forward(self, x):
-        # average pool the final feature map
-        x = self.av_pool(x)
-
-        # optional BN
-        if self.bn is not None:
-            x = self.bn(x)
-
-        # flatten
-        x = x.view(x.size(0), -1)
-
-        # linear layer
-        return self.linear(x)
-
-
-def train(model, reglog, optimizer, loader, epoch):
+def train(model, optimizer, loader, epoch):
     """
     Train the models on the dataset.
     """
@@ -280,8 +242,7 @@ def train(model, reglog, optimizer, loader, epoch):
     losses = AverageMeter()
     end = time.perf_counter()
 
-    model.eval()
-    reglog.train()
+    model.train()
     criterion = nn.CrossEntropyLoss().cuda()
 
     for iter_epoch, (inp, target) in enumerate(loader):
@@ -293,9 +254,7 @@ def train(model, reglog, optimizer, loader, epoch):
         target = target.cuda(non_blocking=True)
 
         # forward
-        with torch.no_grad():
-            output = model(inp)
-        output = reglog(output)
+        output = model(inp)
 
         # compute cross entropy loss
         loss = criterion(output, target)
@@ -324,7 +283,8 @@ def train(model, reglog, optimizer, loader, epoch):
                 "Data {data_time.val:.3f} ({data_time.avg:.3f})\t"
                 "Loss {loss.val:.4f} ({loss.avg:.4f})\t"
                 "Prec {top1.val:.3f} ({top1.avg:.3f})\t"
-                "LR {lr}".format(
+                "LR trunk {lr}\t"
+                "LR head {lr_W}".format(
                     epoch,
                     iter_epoch,
                     len(loader),
@@ -333,13 +293,13 @@ def train(model, reglog, optimizer, loader, epoch):
                     loss=losses,
                     top1=top1,
                     lr=optimizer.param_groups[0]["lr"],
+                    lr_W=optimizer.param_groups[1]["lr"],
                 )
             )
-
     return epoch, losses.avg, top1.avg.item(), top5.avg.item()
 
 
-def validate_network(val_loader, model, linear_classifier):
+def validate_network(val_loader, model):
     batch_time = AverageMeter()
     losses = AverageMeter()
     top1 = AverageMeter()
@@ -348,7 +308,6 @@ def validate_network(val_loader, model, linear_classifier):
 
     # switch to evaluate mode
     model.eval()
-    linear_classifier.eval()
 
     criterion = nn.CrossEntropyLoss().cuda()
 
@@ -361,7 +320,7 @@ def validate_network(val_loader, model, linear_classifier):
             target = target.cuda(non_blocking=True)
 
             # compute output
-            output = linear_classifier(model(inp))
+            output = model(inp)
             loss = criterion(output, target)
 
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
@@ -373,8 +332,8 @@ def validate_network(val_loader, model, linear_classifier):
             batch_time.update(time.perf_counter() - end)
             end = time.perf_counter()
 
-    if top1.avg.item() > best_acc:
-        best_acc = top1.avg.item()
+    if top1.avg.item() > best_acc[0]:
+        best_acc = (top1.avg.item(), top5.avg.item())
 
     if args.rank == 0:
         logger.info(
@@ -383,7 +342,7 @@ def validate_network(val_loader, model, linear_classifier):
             "Loss {loss.avg:.4f}\t"
             "Acc@1 {top1.avg:.3f}\t"
             "Best Acc@1 so far {acc:.1f}".format(
-                batch_time=batch_time, loss=losses, top1=top1, acc=best_acc))
+                batch_time=batch_time, loss=losses, top1=top1, acc=best_acc[0]))
 
     return losses.avg, top1.avg.item(), top5.avg.item()
 
