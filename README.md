@@ -33,6 +33,7 @@ We also provide models pre-trained with [DeepCluster-v2](./main_deepclusterv2.py
 | SwAV | 200 | 256 | 2x224 + 6x96 | 72.7 | [model](https://dl.fbaipublicfiles.com/deepcluster/swav_200ep_bs256_pretrain.pth.tar) | [script](./scripts/swav_200ep_bs256_pretrain.sh) |
 | SwAV | 400 | 256 | 2x224 + 6x96 | 74.3 | [model](https://dl.fbaipublicfiles.com/deepcluster/swav_400ep_bs256_pretrain.pth.tar) | [script](./scripts/swav_400ep_bs256_pretrain.sh) |
 | SwAV | 400 | 4096 | 2x224 | 70.1 | [model](https://dl.fbaipublicfiles.com/deepcluster/swav_400ep_2x224_pretrain.pth.tar) | [script](./scripts/swav_400ep_2x224_pretrain.sh) |
+| DeepCluster-v2 | 800 | 4096 | 2x224 + 6x96 | 75.2 | [model](https://dl.fbaipublicfiles.com/deepcluster/deepclusterv2_800ep_pretrain.pth.tar) | [script](./scripts/deepclusterv2_800ep_pretrain.sh) |
 | DeepCluster-v2 | 400 | 4096 | 2x160 + 4x96 | 74.3 | [model](https://dl.fbaipublicfiles.com/deepcluster/deepclusterv2_400ep_pretrain.pth.tar) | [script](./scripts/deepclusterv2_400ep_pretrain.sh) |
 | DeepCluster-v2 | 400 | 4096 | 2x224 | 70.2 | [model](https://dl.fbaipublicfiles.com/deepcluster/deepclusterv2_400ep_2x224_pretrain.pth.tar) | [script](./scripts/deepclusterv2_400ep_2x224_pretrain.sh) |
 | SeLa-v2 | 400 | 4096 | 2x160 + 4x96 | 71.8 | [model](https://dl.fbaipublicfiles.com/deepcluster/selav2_400ep_pretrain.pth.tar) | - |
@@ -44,7 +45,7 @@ We provide SwAV models with ResNet-50 networks where we multiply the width by a 
 |-------------------|---------------------|--------------------|--------------------|--------------------|--------------------|
 | RN50-w2 | 94M | 400 | 77.3 | [model](https://dl.fbaipublicfiles.com/deepcluster/swav_RN50w2_400ep_pretrain.pth.tar) | [script](./scripts/swav_RN50w2_400ep_pretrain.sh) |
 | RN50-w4 | 375M | 400 | 77.9 | [model](https://dl.fbaipublicfiles.com/deepcluster/swav_RN50w4_400ep_pretrain.pth.tar) | [script](./scripts/swav_RN50w4_400ep_pretrain.sh) |
-| RN50-w5 | 586M | 400 | 78.5 | [model](https://dl.fbaipublicfiles.com/deepcluster/swav_RN50w5_400ep_pretrain.pth.tar) | [script](./scripts/swav_RN50w5_400ep_pretrain.sh) |
+| RN50-w5 | 586M | 400 | 78.5 | [model](https://dl.fbaipublicfiles.com/deepcluster/swav_RN50w5_400ep_pretrain.pth.tar) | - |
 
 ## Running times
 We provide the running times for some of our runs:
