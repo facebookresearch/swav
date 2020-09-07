@@ -14,7 +14,6 @@ import torch
 import torch.nn as nn
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
-import torch.distributed as dist
 import torch.optim
 import torch.utils.data as data
 import torchvision.transforms as transforms
