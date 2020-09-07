@@ -72,7 +72,7 @@ Our implementation consists in a [main_swav.py](./main_swav.py) file from which 
 For example, to train SwAV baseline on a single node with 8 gpus for 400 epochs, run:
 ```
 python -m torch.distributed.launch --nproc_per_node=8 main_swav.py \
---data_path /path/to/imagenet \
+--data_path /path/to/imagenet/train \
 --epochs 400 \
 --base_lr 0.6 \
 --final_lr 0.0006 \

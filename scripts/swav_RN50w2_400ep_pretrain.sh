@@ -20,7 +20,7 @@ dist_url="tcp://"
 dist_url+=$master_node
 dist_url+=:40000
 
-DATASET_PATH="/path/to/imagenet"
+DATASET_PATH="/path/to/imagenet/train"
 EXPERIMENT_PATH="./experiments/swav_RN50w2_400ep_pretrain"
 mkdir -p $EXPERIMENT_PATH
 
