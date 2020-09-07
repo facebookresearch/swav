@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 #
 import torch
-import torchvision
 from torchvision.models.resnet import resnet50 as _resnet50
 
 dependencies = ["torch", "torchvision"]

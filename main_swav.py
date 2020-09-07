@@ -355,7 +355,6 @@ def distributed_sinkhorn(Q, nmb_iters):
         dist.all_reduce(sum_Q)
         Q /= sum_Q
 
-        u = torch.zeros(Q.shape[0]).cuda(non_blocking=True)
         r = torch.ones(Q.shape[0]).cuda(non_blocking=True) / Q.shape[0]
         c = torch.ones(Q.shape[1]).cuda(non_blocking=True) / (args.world_size * Q.shape[1])
 
