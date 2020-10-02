@@ -55,10 +55,6 @@ We provide the running times for some of our runs:
 | SwAV | 256 | 2x224 + 6x96 | [\*](./scripts/swav_200ep_bs256_pretrain.sh) [\*](./scripts/swav_400ep_bs256_pretrain.sh) | 52min10s |
 | DeepCluster-v2 | 4096 | 2x160 + 4x96 | [\*](./scripts/deepclusterv2_400ep_pretrain.sh) | 3min13s |
 
-If you experiment slow running times, it might be because of the Gaussian blur.
-We recommend operating Gaussiam blur with PIL library instead of open-cv (pass `--use_pil_blur true` as argument).
-Note that we keep `--use_pil_blur false` in the [scripts](./scripts) because all our experiments were performed with open-cv but we strongly recommend using PIL library instead.
-
 # Running SwAV unsupervised training
 
 ## Requirements
@@ -102,6 +98,8 @@ Note that you might need to remove the copyright header from the sbatch file to 
 
 **Set up `dist_url` parameter**: We refer the user to pytorch distributed documentation ([env](https://pytorch.org/docs/stable/distributed.html#environment-variable-initialization) or [file](https://pytorch.org/docs/stable/distributed.html#shared-file-system-initialization) or [tcp](https://pytorch.org/docs/stable/distributed.html#tcp-initialization)) for setting the distributed initialization method (parameter `dist_url`) correctly. In the provided sbatch files, we use the [tcp init method](https://pytorch.org/docs/stable/distributed.html#tcp-initialization) (see [\*](https://github.com/facebookresearch/swav/blob/master/scripts/swav_800ep_pretrain.sh#L17-L20) for example).
 
+# Evaluating models
+
 ## Evaluate models: Linear classification on ImageNet
 To train a supervised linear classifier on frozen features/weights on a single node with 8 gpus, run:
 ```
@@ -143,6 +141,37 @@ python -m torch.distributed.launch --nproc_per_node=8 eval_semisup.py \
 ```
 python run_with_submitit.py --batch_size 4 --nodes 2 --lr_backbone 5e-5
 ```
+
+# Common Issues
+
+For help or issues using SwAV, please submit a GitHub issue.
+
+Click the following issues for help:
+<details>
+<summary>
+The loss does not decrease and is stuck at `ln(nmb_prototypes)` (8.006 for 3000 prototypes).
+</summary>
+<br/>
+placeholder
+</details>
+
+<details>
+<summary>
+Slow training.
+</summary>
+<br/>
+If you experiment slow running times, it might be because of the Gaussian blur.
+We recommend operating Gaussian blur with PIL library instead of open-cv (pass `--use_pil_blur true` as argument).
+Note that we keep `--use_pil_blur false` in the [scripts](./scripts) because all our experiments were performed with open-cv but we strongly recommend using PIL library instead.
+</details>
+
+<details>
+<summary>
+Training gets unstable when I use the queue.
+</summary>
+<br/>
+placeholder
+</details>
 
 ## License
 See the [LICENSE](LICENSE) file for more details.
