@@ -146,13 +146,23 @@ python run_with_submitit.py --batch_size 4 --nodes 2 --lr_backbone 5e-5
 
 For help or issues using SwAV, please submit a GitHub issue.
 
-#### The loss does not decrease and is stuck at `ln(nmb_prototypes)` (8.006 for 3000 prototypes).
-placeholder
+#### The loss does not decrease and is stuck at ln(nmb_prototypes) (8.006 for 3000 prototypes).
+It sometimes happens that the system collapses at the beginning and does not manage to converge.
+We have found the following empirical workarounds to improve convergence and avoid collapsing at the beginning:
+- use a lower epsilon value (`--epsilon 0.03` instead of the default 0.05)
+- carefully tune the hyper-parameters
+- freeze the prototypes during first iterations (`freeze_prototypes_niters` argument)
+- switch to hard assignment
+- remove batch-normalization layer from the projection head
+- reduce the difficulty of the problem (less crops or softer data augmentation)
 
-#### Slow training.
-If you experiment slow running times, it might be because of the Gaussian blur.
-We recommend operating Gaussian blur with PIL library instead of open-cv (pass `--use_pil_blur true` as argument).
-Note that we keep `--use_pil_blur false` in the [scripts](./scripts) because all our experiments were performed with open-cv but we strongly recommend using PIL library instead.
+We now analyze the collapsing problem: it happens when all examples are mapped to the same unique representation.
+In other words, the convnet always has the same output regardless of its input, it is a constant function.
+All examples gets the same cluster assignment because they are identical, and the only valid assignment that satisfy the equipartition constraint in this case is the uniform assignment (1/K where K is the number of prototypes).
+In turn, this uniform assignment is trivial to predict since it is the same for all examples.
+Reducing epsilon parameter (see Eq(3) of our [paper](https://arxiv.org/abs/2006.09882)) encourages the assignments `Q` to be less uniform (more peaked), which strongly helps avoiding collapsing.
+However, using a too low value for epsilon leads to numerical instability.
+If the loss goes to NaN, you can try using `--improve_numerical_stability true` in `main_swav.py`.
 
 #### Training gets unstable when using the queue.
 The queue is composed of feature representations from the previous batches.
@@ -165,11 +175,16 @@ After introducing the queue the loss should be lower than what it was without th
 On the following loss curve (30 first epochs of this [script](./scripts/swav_200ep_bs256_pretrain.sh)) we introduced the queue at epoch 15.
 We observe that it made the loss go more down.
 <div align="left">
-  <img width="50%" alt="SwAV training loss batch_size=256 during the first 30 epochs" src="https://dl.fbaipublicfiles.com/deepcluster/swav_loss_bs256_30ep.png">
+  <img width="35%" alt="SwAV training loss batch_size=256 during the first 30 epochs" src="https://dl.fbaipublicfiles.com/deepcluster/swav_loss_bs256_30ep.png">
 </div>
 
 If when introducing the queue, the loss goes up and does not decrease afterwards you should stop your training and change the queue parameters.
 We recommend (i) using a smaller queue, (ii) starting the queue later in training.
+
+#### Slow training.
+If you experiment slow running times, it might be because of the Gaussian blur.
+We recommend operating Gaussian blur with PIL library instead of open-cv (pass `--use_pil_blur true` as argument).
+Note that we keep `--use_pil_blur false` in the [scripts](./scripts) because all our experiments were performed with open-cv but we strongly recommend using PIL library instead.
 
 ## License
 See the [LICENSE](LICENSE) file for more details.

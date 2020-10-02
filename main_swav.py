@@ -61,6 +61,8 @@ parser.add_argument("--temperature", default=0.1, type=float,
                     help="temperature parameter in training loss")
 parser.add_argument("--epsilon", default=0.05, type=float,
                     help="regularization parameter for Sinkhorn-Knopp algorithm")
+parser.add_argument("--improve_numerical_stability", default=False, type=bool_flag,
+                    help="improves numerical stability in Sinkhorn-Knopp algorithm")
 parser.add_argument("--sinkhorn_iterations", default=3, type=int,
                     help="number of iterations in Sinkhorn-Knopp algorithm")
 parser.add_argument("--feat_dim", default=128, type=int,
@@ -305,7 +307,12 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
                     queue[i, bs:] = queue[i, :-bs].clone()
                     queue[i, :bs] = embedding[crop_id * bs: (crop_id + 1) * bs]
                 # get assignments
-                q = torch.exp(out / args.epsilon).t()
+                q = out / args.epsilon
+                if args.improve_numerical_stability:
+                    M = torch.max(q)
+                    dist.all_reduce(M, op=dist.ReduceOp.MAX)
+                    q -= M
+                q = torch.exp(q).t()
                 q = distributed_sinkhorn(q, args.sinkhorn_iterations)[-bs:]
 
             # cluster assignment prediction
@@ -354,23 +361,39 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
 
 def distributed_sinkhorn(Q, nmb_iters):
     with torch.no_grad():
+        Q = shoot_infs(Q)
         sum_Q = torch.sum(Q)
         dist.all_reduce(sum_Q)
         Q /= sum_Q
-
         r = torch.ones(Q.shape[0]).cuda(non_blocking=True) / Q.shape[0]
         c = torch.ones(Q.shape[1]).cuda(non_blocking=True) / (args.world_size * Q.shape[1])
-
-        curr_sum = torch.sum(Q, dim=1)
-        dist.all_reduce(curr_sum)
-
         for it in range(nmb_iters):
-            u = curr_sum
-            Q *= (r / u).unsqueeze(1)
+            u = torch.sum(Q, dim=1)
+            dist.all_reduce(u)
+            u = r / u
+            u = shoot_infs(u)
+            Q *= u.unsqueeze(1)
             Q *= (c / torch.sum(Q, dim=0)).unsqueeze(0)
-            curr_sum = torch.sum(Q, dim=1)
-            dist.all_reduce(curr_sum)
         return (Q / torch.sum(Q, dim=0, keepdim=True)).t().float()
+
+
+def shoot_infs(inp_tensor):
+    """Replaces inf by maximum of tensor"""
+    mask_inf = torch.isinf(inp_tensor)
+    ind_inf = torch.nonzero(mask_inf)
+    if len(ind_inf) > 0:
+        for ind in ind_inf:
+            if len(ind) == 2:
+                inp_tensor[ind[0], ind[1]] = 0
+            elif len(ind) == 1:
+                inp_tensor[ind[0]] = 0
+        m = torch.max(inp_tensor)
+        for ind in ind_inf:
+            if len(ind) == 2:
+                inp_tensor[ind[0], ind[1]] = m
+            elif len(ind) == 1:
+                inp_tensor[ind[0]] = m
+    return inp_tensor
 
 
 if __name__ == "__main__":
