@@ -49,6 +49,8 @@ parser.add_argument("--min_scale_crops", type=float, default=[0.14], nargs="+",
                     help="argument in RandomResizedCrop (example: [0.14, 0.05])")
 parser.add_argument("--max_scale_crops", type=float, default=[1], nargs="+",
                     help="argument in RandomResizedCrop (example: [1., 0.14])")
+parser.add_argument("--use_pil_blur", type=bool_flag, default=True,
+                    help="""use PIL library to perform blur instead of opencv""")
 
 #########################
 ## swav specific params #
@@ -131,6 +133,7 @@ def main():
         args.nmb_crops,
         args.min_scale_crops,
         args.max_scale_crops,
+        pil_blur=args.use_pil_blur,
     )
     sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     train_loader = torch.utils.data.DataLoader(

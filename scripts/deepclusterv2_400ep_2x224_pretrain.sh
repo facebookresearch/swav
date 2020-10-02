@@ -30,6 +30,7 @@ srun --output=${EXPERIMENT_PATH}/%j.out --error=${EXPERIMENT_PATH}/%j.err --labe
 --min_scale_crops 0.08 \
 --max_scale_crops 1. \
 --crops_for_assign 0 1 \
+--use_pil_blur false \
 --temperature 0.1 \
 --feat_dim 128 \
 --nmb_prototypes 3000 3000 3000 \

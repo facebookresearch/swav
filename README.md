@@ -55,6 +55,10 @@ We provide the running times for some of our runs:
 | SwAV | 256 | 2x224 + 6x96 | [\*](./scripts/swav_200ep_bs256_pretrain.sh) [\*](./scripts/swav_400ep_bs256_pretrain.sh) | 52min10s |
 | DeepCluster-v2 | 4096 | 2x160 + 4x96 | [\*](./scripts/deepclusterv2_400ep_pretrain.sh) | 3min13s |
 
+If you experiment slow running times, it might be because of the Gaussian blur.
+We recommend operating Gaussiam blur with PIL library instead of open-cv (pass `--use_pil_blur true` as argument).
+Note that we keep `--use_pil_blur false` in the [scripts](./scripts) because all our experiments were performed with open-cv but we strongly recommend using PIL library instead.
+
 # Running SwAV unsupervised training
 
 ## Requirements
