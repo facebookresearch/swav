@@ -146,35 +146,36 @@ python run_with_submitit.py --batch_size 4 --nodes 2 --lr_backbone 5e-5
 
 For help or issues using SwAV, please submit a GitHub issue.
 
-Click the following issues for help:
-<details>
-<summary>
-The loss does not decrease and is stuck at `ln(nmb_prototypes)` (8.006 for 3000 prototypes).
-</summary>
-<br/>
+#### The loss does not decrease and is stuck at `ln(nmb_prototypes)` (8.006 for 3000 prototypes).
 placeholder
-</details>
 
-<details>
-<summary>
-Slow training.
-</summary>
-<br/>
+#### Slow training.
 If you experiment slow running times, it might be because of the Gaussian blur.
 We recommend operating Gaussian blur with PIL library instead of open-cv (pass `--use_pil_blur true` as argument).
 Note that we keep `--use_pil_blur false` in the [scripts](./scripts) because all our experiments were performed with open-cv but we strongly recommend using PIL library instead.
-</details>
 
-<details>
-<summary>
-Training gets unstable when I use the queue.
-</summary>
-<br/>
-placeholder
-</details>
+#### Training gets unstable when using the queue.
+The queue is composed of feature representations from the previous batches.
+[These lines](./main_swav.py#L305-L306) discard the oldest feature representations from the queue and save the newest one (i.e. from the current batch) through a round-robin mechanism.
+This way, the assignment problem is performed on more samples: without the queue we assign `B` examples to `num_prototypes` clusters where `B` is the total batch size while with the queue we assign `(B + queue_length)` examples to `num_prototypes` clusters.
+This is especially useful when working with small batches because it improves the precision of the assignment.
+
+If you start using the queue too early or if you use a too large queue, this can considerably disturb training: this is because the queue members are too inconsistent.
+After introducing the queue the loss should be lower than what it was without the queue.
+On the following loss curve (30 first epochs of this [script](./scripts/swav_200ep_bs256_pretrain.sh)) we introduced the queue at epoch 15.
+We observe that it made the loss go more down.
+<div align="left">
+  <img width="50%" alt="SwAV training loss batch_size=256 during the first 30 epochs" src="https://dl.fbaipublicfiles.com/deepcluster/swav_loss_bs256_30ep.png">
+</div>
+
+If when introducing the queue, the loss goes up and does not decrease afterwards you should stop your training and change the queue parameters.
+We recommend (i) using a smaller queue, (ii) starting the queue later in training.
 
 ## License
 See the [LICENSE](LICENSE) file for more details.
+
+## See also
+[SwAV-TF](https://github.com/ayulockin/SwAV-TF): A TensorFlow re-implementation.
 
 ## Citation
 If you find this repository useful in your research, please cite:
