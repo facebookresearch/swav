@@ -106,6 +106,8 @@ parser.add_argument("--workers", default=10, type=int,
 parser.add_argument("--checkpoint_freq", type=int, default=25,
                     help="Save the model periodically")
 parser.add_argument("--sync_bn", type=str, default="pytorch", help="synchronize bn")
+parser.add_argument("--syncbn_process_group_size", type=int, default=8, help=""" see
+                    https://github.com/NVIDIA/apex/blob/master/apex/parallel/__init__.py#L58-L67""")
 parser.add_argument("--dump_path", type=str, default=".",
                     help="experiment dump path for checkpoints and log")
 parser.add_argument("--seed", type=int, default=31, help="seed")
@@ -150,9 +152,9 @@ def main():
     if args.sync_bn == "pytorch":
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
     elif args.sync_bn == "apex":
-        process_group = None
-        if args.world_size // 8 > 0:
-            process_group = apex.parallel.create_syncbn_process_group(args.world_size // 8)
+        # with apex syncbn we sync bn per group because it speeds up computation
+        # compared to global syncbn
+        process_group = apex.parallel.create_syncbn_process_group(args.syncbn_process_group_size)
         model = apex.parallel.convert_syncbn_model(model, process_group=process_group)
     # copy model to GPU
     model = model.cuda()
