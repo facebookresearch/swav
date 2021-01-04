@@ -59,10 +59,10 @@ We provide the running times for some of our runs:
 
 ## Requirements
 - Python 3.6
-- [PyTorch](http://pytorch.org) install >= 1.4.0
+- [PyTorch](http://pytorch.org) install = 1.4.0
 - torchvision
 - CUDA 10.1
-- [Apex](https://github.com/NVIDIA/apex) with CUDA extension
+- [Apex](https://github.com/NVIDIA/apex) with CUDA extension (see [how I installed apex](https://github.com/facebookresearch/swav/issues/18#issuecomment-748123838))
 - Other dependencies: opencv-python, scipy, pandas, numpy
 
 ## Singlenode training
@@ -190,6 +190,7 @@ Note that we keep `--use_pil_blur false` in the [scripts](./scripts) because all
 See the [LICENSE](LICENSE) file for more details.
 
 ## See also
+[PyTorch Lightning Bolts](https://pytorch-lightning-bolts.readthedocs.io/en/latest/self_supervised_models.html#swav): Implementation by the Lightning team.
 [SwAV-TF](https://github.com/ayulockin/SwAV-TF): A TensorFlow re-implementation.
 
 ## Citation
@@ -198,7 +199,7 @@ If you find this repository useful in your research, please cite:
 @article{caron2020unsupervised,
   title={Unsupervised Learning of Visual Features by Contrasting Cluster Assignments},
   author={Caron, Mathilde and Misra, Ishan and Mairal, Julien and Goyal, Priya and Bojanowski, Piotr and Joulin, Armand},
-  journal={arXiv preprint arXiv:2006.09882},
+  booktitle={Proceedings of Advances in Neural Information Processing Systems (NeurIPS)},
   year={2020}
 }
 ```
