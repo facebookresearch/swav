@@ -191,6 +191,7 @@ See the [LICENSE](LICENSE) file for more details.
 
 ## See also
 [PyTorch Lightning Bolts](https://pytorch-lightning-bolts.readthedocs.io/en/latest/self_supervised_models.html#swav): Implementation by the Lightning team.
+
 [SwAV-TF](https://github.com/ayulockin/SwAV-TF): A TensorFlow re-implementation.
 
 ## Citation
