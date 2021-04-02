@@ -14,6 +14,7 @@ from logging import getLogger
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
@@ -49,8 +50,6 @@ parser.add_argument("--min_scale_crops", type=float, default=[0.14], nargs="+",
                     help="argument in RandomResizedCrop (example: [0.14, 0.05])")
 parser.add_argument("--max_scale_crops", type=float, default=[1], nargs="+",
                     help="argument in RandomResizedCrop (example: [1., 0.14])")
-parser.add_argument("--use_pil_blur", type=bool_flag, default=True,
-                    help="""use PIL library to perform blur instead of opencv""")
 
 #########################
 ## swav specific params #
@@ -61,8 +60,6 @@ parser.add_argument("--temperature", default=0.1, type=float,
                     help="temperature parameter in training loss")
 parser.add_argument("--epsilon", default=0.05, type=float,
                     help="regularization parameter for Sinkhorn-Knopp algorithm")
-parser.add_argument("--improve_numerical_stability", default=False, type=bool_flag,
-                    help="improves numerical stability in Sinkhorn-Knopp algorithm")
 parser.add_argument("--sinkhorn_iterations", default=3, type=int,
                     help="number of iterations in Sinkhorn-Knopp algorithm")
 parser.add_argument("--feat_dim", default=128, type=int,
@@ -137,7 +134,6 @@ def main():
         args.nmb_crops,
         args.min_scale_crops,
         args.max_scale_crops,
-        pil_blur=args.use_pil_blur,
     )
     sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     train_loader = torch.utils.data.DataLoader(
@@ -266,7 +262,6 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
     data_time = AverageMeter()
     losses = AverageMeter()
 
-    softmax = nn.Softmax(dim=1).cuda()
     model.train()
     use_the_queue = False
 
@@ -295,7 +290,7 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
         loss = 0
         for i, crop_id in enumerate(args.crops_for_assign):
             with torch.no_grad():
-                out = output[bs * crop_id: bs * (crop_id + 1)]
+                out = output[bs * crop_id: bs * (crop_id + 1)].detach()
 
                 # time to use the queue
                 if queue is not None:
@@ -308,20 +303,15 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
                     # fill the queue
                     queue[i, bs:] = queue[i, :-bs].clone()
                     queue[i, :bs] = embedding[crop_id * bs: (crop_id + 1) * bs]
+
                 # get assignments
-                q = out / args.epsilon
-                if args.improve_numerical_stability:
-                    M = torch.max(q)
-                    dist.all_reduce(M, op=dist.ReduceOp.MAX)
-                    q -= M
-                q = torch.exp(q).t()
-                q = distributed_sinkhorn(q, args.sinkhorn_iterations)[-bs:]
+                q = distributed_sinkhorn(out)[-bs:]
 
             # cluster assignment prediction
             subloss = 0
             for v in np.delete(np.arange(np.sum(args.nmb_crops)), crop_id):
-                p = softmax(output[bs * v: bs * (v + 1)] / args.temperature)
-                subloss -= torch.mean(torch.sum(q * torch.log(p), dim=1))
+                x = output[bs * v: bs * (v + 1)] / args.temperature
+                subloss -= torch.mean(torch.sum(q * F.log_softmax(x, dim=1), dim=1))
             loss += subloss / (np.sum(args.nmb_crops) - 1)
         loss /= len(args.crops_for_assign)
 
@@ -332,7 +322,7 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
                 scaled_loss.backward()
         else:
             loss.backward()
-        # cancel some gradients
+        # cancel gradients for the prototypes
         if iteration < args.freeze_prototypes_niters:
             for name, p in model.named_parameters():
                 if "prototypes" in name:
@@ -361,41 +351,30 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
     return (epoch, losses.avg), queue
 
 
-def distributed_sinkhorn(Q, nmb_iters):
-    with torch.no_grad():
-        Q = shoot_infs(Q)
-        sum_Q = torch.sum(Q)
-        dist.all_reduce(sum_Q)
-        Q /= sum_Q
-        r = torch.ones(Q.shape[0]).cuda(non_blocking=True) / Q.shape[0]
-        c = torch.ones(Q.shape[1]).cuda(non_blocking=True) / (args.world_size * Q.shape[1])
-        for it in range(nmb_iters):
-            u = torch.sum(Q, dim=1)
-            dist.all_reduce(u)
-            u = r / u
-            u = shoot_infs(u)
-            Q *= u.unsqueeze(1)
-            Q *= (c / torch.sum(Q, dim=0)).unsqueeze(0)
-        return (Q / torch.sum(Q, dim=0, keepdim=True)).t().float()
+@torch.no_grad()
+def distributed_sinkhorn(out):
+    Q = torch.exp(out / args.epsilon).t() # Q is K-by-B for consistency with notations from our paper
+    B = Q.shape[1] * args.world_size # number of samples to assign
+    K = Q.shape[0] # how many prototypes
 
+    # make the matrix sums to 1
+    sum_Q = torch.sum(Q)
+    dist.all_reduce(sum_Q)
+    Q /= sum_Q
 
-def shoot_infs(inp_tensor):
-    """Replaces inf by maximum of tensor"""
-    mask_inf = torch.isinf(inp_tensor)
-    ind_inf = torch.nonzero(mask_inf)
-    if len(ind_inf) > 0:
-        for ind in ind_inf:
-            if len(ind) == 2:
-                inp_tensor[ind[0], ind[1]] = 0
-            elif len(ind) == 1:
-                inp_tensor[ind[0]] = 0
-        m = torch.max(inp_tensor)
-        for ind in ind_inf:
-            if len(ind) == 2:
-                inp_tensor[ind[0], ind[1]] = m
-            elif len(ind) == 1:
-                inp_tensor[ind[0]] = m
-    return inp_tensor
+    for it in range(args.sinkhorn_iterations):
+        # normalize each row: total weight per prototype must be 1/K
+        sum_of_rows = torch.sum(Q, dim=1, keepdim=True)
+        dist.all_reduce(sum_of_rows)
+        Q /= sum_of_rows
+        Q /= K
+
+        # normalize each column: total weight per sample must be 1/B
+        Q /= torch.sum(Q, dim=0, keepdim=True)
+        Q /= B
+
+    Q *= B # the colomns must sum to 1 so that Q is an assignment
+    return Q.t()
 
 
 if __name__ == "__main__":

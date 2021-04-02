@@ -14,8 +14,8 @@ Our method can be trained with large and small batches and can scale to unlimite
 
 # Model Zoo
 
-We release our best ResNet-50 pre-trained with SwAV with the hope that other researchers might also benefit by replacing the ImageNet supervised network with SwAV backbone.
-To load the model, simply do:
+We release several models pre-trained with SwAV with the hope that other researchers might also benefit by replacing the ImageNet supervised network with SwAV backbone.
+To load our best SwAV pre-trained ResNet-50 model, simply do:
 ```python
 import torch
 model = torch.hub.load('facebookresearch/swav', 'resnet50')
@@ -41,6 +41,14 @@ We also provide models pre-trained with [DeepCluster-v2](./main_deepclusterv2.py
 
 ## Larger architectures
 We provide SwAV models with ResNet-50 networks where we multiply the width by a factor ×2, ×4, and ×5.
+To load the corresponding backbone you can use:
+```python
+import torch
+rn50w2 = torch.hub.load('facebookresearch/swav', 'resnet50w2')
+rn50w4 = torch.hub.load('facebookresearch/swav', 'resnet50w4')
+rn50w5 = torch.hub.load('facebookresearch/swav', 'resnet50w5')
+```
+
 | network | parameters | epochs | ImageNet top-1 acc. | url | args |
 |-------------------|---------------------|--------------------|--------------------|--------------------|--------------------|
 | RN50-w2 | 94M | 400 | 77.3 | [model](https://dl.fbaipublicfiles.com/deepcluster/swav_RN50w2_400ep_pretrain.pth.tar) | [script](./scripts/swav_RN50w2_400ep_pretrain.sh) |
@@ -63,7 +71,7 @@ We provide the running times for some of our runs:
 - torchvision
 - CUDA 10.1
 - [Apex](https://github.com/NVIDIA/apex) with CUDA extension (see [how I installed apex](https://github.com/facebookresearch/swav/issues/18#issuecomment-748123838))
-- Other dependencies: opencv-python, scipy, pandas, numpy
+- Other dependencies: scipy, pandas, numpy
 
 ## Singlenode training
 SwAV is very simple to implement and experiment with.
@@ -160,9 +168,8 @@ We now analyze the collapsing problem: it happens when all examples are mapped t
 In other words, the convnet always has the same output regardless of its input, it is a constant function.
 All examples gets the same cluster assignment because they are identical, and the only valid assignment that satisfy the equipartition constraint in this case is the uniform assignment (1/K where K is the number of prototypes).
 In turn, this uniform assignment is trivial to predict since it is the same for all examples.
-Reducing epsilon parameter (see Eq(3) of our [paper](https://arxiv.org/abs/2006.09882)) encourages the assignments `Q` to be less uniform (more peaked), which strongly helps avoiding collapsing.
-However, using a too low value for epsilon leads to numerical instability.
-If the loss goes to NaN, you can try using `--improve_numerical_stability true` in `main_swav.py`.
+Reducing epsilon parameter (see Eq(3) of our [paper](https://arxiv.org/abs/2006.09882)) encourages the assignments `Q` to be sharper (i.e. less uniform), which strongly helps avoiding collapse.
+However, using a too low value for epsilon may lead to numerical instability.
 
 #### Training gets unstable when using the queue.
 The queue is composed of feature representations from the previous batches.
@@ -180,11 +187,6 @@ We observe that it made the loss go more down.
 
 If when introducing the queue, the loss goes up and does not decrease afterwards you should stop your training and change the queue parameters.
 We recommend (i) using a smaller queue, (ii) starting the queue later in training.
-
-#### Slow training.
-If you experiment slow running times, it might be because of the Gaussian blur.
-We recommend operating Gaussian blur with PIL library instead of open-cv (pass `--use_pil_blur true` as argument).
-Note that we keep `--use_pil_blur false` in the [scripts](./scripts) because all our experiments were performed with open-cv but we strongly recommend using PIL library instead.
 
 ## License
 See the [LICENSE](LICENSE) file for more details.
