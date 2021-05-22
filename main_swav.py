@@ -190,8 +190,7 @@ def main():
     # wrap model
     model = nn.parallel.DistributedDataParallel(
         model,
-        device_ids=[args.gpu_to_work_on],
-        find_unused_parameters=True,
+        device_ids=[args.gpu_to_work_on]
     )
 
     # optionally resume from a checkpoint
