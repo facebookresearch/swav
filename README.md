@@ -18,7 +18,7 @@ We release several models pre-trained with SwAV with the hope that other researc
 To load our best SwAV pre-trained ResNet-50 model, simply do:
 ```python
 import torch
-model = torch.hub.load('facebookresearch/swav', 'resnet50')
+model = torch.hub.load('facebookresearch/swav:main', 'resnet50')
 ```
 
 We provide several baseline SwAV pre-trained models with ResNet-50 architecture in torchvision format.
@@ -44,9 +44,9 @@ We provide SwAV models with ResNet-50 networks where we multiply the width by a 
 To load the corresponding backbone you can use:
 ```python
 import torch
-rn50w2 = torch.hub.load('facebookresearch/swav', 'resnet50w2')
-rn50w4 = torch.hub.load('facebookresearch/swav', 'resnet50w4')
-rn50w5 = torch.hub.load('facebookresearch/swav', 'resnet50w5')
+rn50w2 = torch.hub.load('facebookresearch/swav:main', 'resnet50w2')
+rn50w4 = torch.hub.load('facebookresearch/swav:main', 'resnet50w4')
+rn50w5 = torch.hub.load('facebookresearch/swav:main', 'resnet50w5')
 ```
 
 | network | parameters | epochs | ImageNet top-1 acc. | url | args |
