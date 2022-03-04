@@ -1,4 +1,7 @@
 # Unsupervised Learning of Visual Features by Contrasting Cluster Assignments
+
+[![Support Ukraine](https://img.shields.io/badge/Support-Ukraine-FFD500?style=flat&labelColor=005BBB)](https://opensource.fb.com/support-ukraine)
+
 This code provides a PyTorch implementation and pretrained models for **SwAV** (**Sw**apping **A**ssignments between **V**iews), as described in the paper [Unsupervised Learning of Visual Features by Contrasting Cluster Assignments](https://arxiv.org/abs/2006.09882).
 
 <div align="center">
