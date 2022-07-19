@@ -250,12 +250,8 @@ def main():
     logger.info("Building data done with {} images loaded.".format(len(train_dataset)))
 
     # build model
-    model = resnet_models.__dict__[args.arch](
-        normalize=True,
-        hidden_mlp=args.hidden_mlp,
-        output_dim=args.feat_dim,
-        nmb_prototypes=args.nmb_prototypes,
-    )
+    model = torch.hub.load("facebookresearch/swav:main", "resnet50")
+
     # synchronize batch norm layers
     if args.sync_bn == "pytorch":
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
