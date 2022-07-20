@@ -1,8 +1,8 @@
 #!bin/bash 
 #SBATCH -p scavenger-gpu
 #SBATCH -c 8
-#SBATCH -N 8
-#SBATCH -n 1
+#SBATCH -N 1
+#SBATCH -n 8
 #SBATCH -t 24:00:00
 #SBATCH -o ./experiments/solar/slurm.out
 #SBATCH -e ./experiments/solar/slurm.err
