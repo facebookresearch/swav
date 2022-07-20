@@ -1,13 +1,17 @@
-#!/bin/bash
-#SBATCH -p gpu --gres=gpu:1
+#!bin/bash 
+#SBATCH -p scavenger-gpu
 #SBATCH -c 8
+#SBATCH -N 8
+#SBATCH -n 1
 #SBATCH -t 24:00:00
-#SBATCH --mem=64G
+#SBATCH -o ./experiments/solar/slurm.out
+#SBATCH -e ./experiments/solar/slurm.err
+#SBATCH --mem=64G 
 
 DATASET_PATH="/hpc/group/energy/zdc6/data/solar-pv"
 EXPERIMENT_PATH="./experiments/solar/swav_800ep_pretrain"
 mkdir -p $EXPERIMENT_PATH
-
+ 
 python -m torch.distributed.launch --nproc_per_node=8 main_swav.py \
     --data_path $DATASET_PATH \
     --nmb_crops 2 6 \
