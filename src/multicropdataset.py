@@ -11,7 +11,7 @@ from PIL import ImageFilter
 import numpy as np
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
-from tasks import Task
+from .tasks import Task
 
 logger = getLogger()
 
