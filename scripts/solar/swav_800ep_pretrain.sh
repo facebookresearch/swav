@@ -1,6 +1,6 @@
-#!bin/bash 
+#!/bin/bash 
 #SBATCH -p scavenger-gpu
-#SBATCH -c 8
+#SBATCH -c 1
 #SBATCH -N 1
 #SBATCH -n 8
 #SBATCH -t 24:00:00
