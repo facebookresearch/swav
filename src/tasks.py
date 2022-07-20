@@ -2,7 +2,7 @@
 class Task:
     def __init__(self, name):
         if name == "solar":
-            self.mean = [0.4914, 0.4822, 0.4465]
-            self.std = [0.2023, 0.1994, 0.2010]
+            self.mean = [0.507, 0.513, 0.462]
+            self.std = [0.172, 0.133, 0.114]
         else:
             raise NotImplementedError("Task not implemented")
