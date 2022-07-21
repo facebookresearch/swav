@@ -250,7 +250,25 @@ def main():
     logger.info("Building data done with {} images loaded.".format(len(train_dataset)))
 
     # build model
-    model = torch.hub.load("facebookresearch/swav:main", "resnet50")
+
+    model = resnet_models.__dict__[args.arch](
+        normalize=True,
+        hidden_mlp=args.hidden_mlp,
+        output_dim=args.feat_dim,
+        nmb_prototypes=args.nmb_prototypes,
+    )
+
+    # Load the pre-trained model weights on top.
+    new_state_dict = model.state_dict()
+
+    # Load weights, and remove bias and weights.
+    state_dict = torch.hub.load("facebookresearch/swav:main", "resnet50").state_dict()
+    state_dict.pop("fc.bias")
+    state_dict.pop("fc.weight")
+
+    # Update the new state dict with the old state dict
+    new_state_dict.update(state_dict)
+    model.load_state_dict(new_state_dict)
 
     # synchronize batch norm layers
     if args.sync_bn == "pytorch":
