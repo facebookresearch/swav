@@ -14,7 +14,6 @@ python -m torch.distributed.launch --nproc_per_node=8 main_swav.py \
     --max_scale_crops 1. 0.14 \
     --queue_length 3840 \
     --epochs 100 \
-    --syncbn_process_group_size 4 \
     --batch_size 32 \
     --base_lr 0.6 \
     --final_lr 0.0006 \
