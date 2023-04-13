@@ -46,6 +46,10 @@ class SwAV_Args:
         freeze_prototypes_niters=313,
         wd=1e-6,
         warmup_epochs=10,
+        dist_url='env://',
+        world_size=-1,
+        rank=0,
+        local_rank=0,
         start_warmup=0,
         arch="resnet50",
         hidden_mlp=2048,
@@ -81,6 +85,10 @@ class SwAV_Args:
             freeze_prototypes_niters (int): Freeze the prototypes during this many iterations from the start.
             wd (float): Weight decay.
             warmup_epochs (int): Number of warmup epochs.
+            dist_url (str): url used to set up distributed training; see https://pytorch.org/docs/stable/distributed.html.
+            world_size (int): number of processes; it is set automatically and should not be passed as an argument.
+            rank (int): rank of this process; it is set automatically and should not be passed as an argument.
+            local_rank (int): this argument is not used and should be ignored.
             start_warmup (float): Initial warmup learning rate.
             arch (str): Convnet architecture.
             hidden_mlp (int): Hidden layer dimension in projection head.
