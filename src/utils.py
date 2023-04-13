@@ -23,6 +23,101 @@ TRUTHY_STRINGS = {"on", "true", "1"}
 
 logger = getLogger()
 
+class SwAV_Args:
+    def __init__(
+        self,
+        data_path="/path/to/imagenet",
+        nmb_crops=[2],
+        size_crops=[224],
+        min_scale_crops=[0.14],
+        max_scale_crops=[1],
+        crops_for_assign=[0, 1],
+        temperature=0.1,
+        epsilon=0.05,
+        sinkhorn_iterations=3,
+        feat_dim=128,
+        nmb_prototypes=3000,
+        queue_length=0,
+        epoch_queue_starts=15,
+        epochs=100,
+        batch_size=64,
+        base_lr=4.8,
+        final_lr=0,
+        freeze_prototypes_niters=313,
+        wd=1e-6,
+        warmup_epochs=10,
+        start_warmup=0,
+        arch="resnet50",
+        hidden_mlp=2048,
+        checkpoint_freq=25,
+        sync_bn="pytorch",
+        dump_path=".",
+        seed=31
+    ) -> None:
+        """SwAV arguments.
+
+        A class containing all the default - if not overwritten at initialization -
+        SwAV arguments.
+
+        Keyword Args:
+            data_path (str): Path to dataset repository.
+            nmb_crops (list): List of number of crops (example: [2, 6]).
+            size_crops (list): Crops resolutions (example: [224, 96]).
+            min_scale_crops (list): Argument in RandomResizedCrop (example: [0.14, 0.05]).
+            max_scale_crops (list): Argument in RandomResizedCrop (example: [1., 0.14]).
+            crops_for_assign (list): List of crops id used for computing assignments.
+            temperature (float): Temperature parameter in training loss.
+            epsilon (float): Regularization parameter for Sinkhorn-Knopp algorithm.
+            sinkhorn_iterations (int): Number of iterations in Sinkhorn-Knopp algorithm.
+            feat_dim (int): Feature dimension.
+            nmb_prototypes (int): Number of prototypes.
+            queue_length (int): Length of the queue (0 for no queue).
+            epoch_queue_starts (int): From this epoch, we start using a queue.
+            epochs (int): Number of total epochs to run.
+            # batch_size (int): Batch size per gpu, i.e. how many unique instances per gpu.
+            # bath_size has to be defined the the dataset_kwargs
+            base_lr (float): Base learning rate.
+            final_lr (float): Final learning rate.
+            freeze_prototypes_niters (int): Freeze the prototypes during this many iterations from the start.
+            wd (float): Weight decay.
+            warmup_epochs (int): Number of warmup epochs.
+            start_warmup (float): Initial warmup learning rate.
+            arch (str): Convnet architecture.
+            hidden_mlp (int): Hidden layer dimension in projection head.
+            checkpoint_freq (int): Save the model periodically.
+            sync_bn (str): Synchronize bn.
+            dump_path (str): Experiment dump path for checkpoints and log.
+            seed (int): Seed.
+        """
+        for argname, argval in dict(locals()).items():
+          setattr(self, argname, argval)
+        
+    def to_dict(self):
+        return {k:v for k,v in vars(self).items()
+                if k not in ('train_kwargs', 'self')}
+
+    @property
+    def train_kwargs(self):
+        return {
+            k: getattr(self, k)
+            for k in (
+                'crops_for_assign', 'nmb_crops', 'temperature', 
+                'freeze_prototypes_niters', 'epsilon', 'sinkhorn_iterations'
+            )
+        }
+
+def get_args(**kwargs):
+    """Configure a ``SwAV`` object for training SwAV.
+
+    Keyword args:
+        **kwargs: Please see the :class:`slideflow.swav.SwAV_Args` documentation
+            for information on available parameters.
+
+    Returns:
+        slideflow.swav.SwAV
+
+    """
+    return SwAV_Args(**kwargs)
 
 def bool_flag(s):
     """
@@ -125,7 +220,8 @@ def restart_from_checkpoint(ckp_paths, run_variables=None, **kwargs):
 
     # open checkpoint file
     checkpoint = torch.load(
-        ckp_path, map_location="cuda:" + str(torch.distributed.get_rank() % torch.cuda.device_count())
+        ckp_path,
+        map_location="cuda:" + str(torch.distributed.get_rank() % torch.cuda.device_count())
     )
 
     # key is what to look for in the checkpoint file
